@@ -31,8 +31,9 @@ from astropy.time import Time
 # Maybe remove them from here?
 from poliastro.twobody import Orbit as _Orbit
 from poliastro.bodies import Earth as _Earth
+from poliastro.core import angles
 
-from .utils import partition, rev as u_rev, M_to_nu as _M_to_nu
+from .utils import partition, rev as u_rev, M_to_nu as _M_to_nu, nu_to_M as _nu_to_M
 
 DEG2RAD = np.pi / 180.
 RAD2DEG = 180. / np.pi
@@ -300,7 +301,7 @@ class TLE:
             argp=orbit.argp.to(u.deg).value,
             # M = orbit.nu.to(u.deg).value, # orbit.nu.to(u.deg).value, # mean anomaly
             # n = orbit.n * (24 * 60 * 60 * u.s) << u.deg / (360 * u.deg), # mean motion
-            M = 0,
+            M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG,
             n = 0,
             rev_num=rev_num
         )
