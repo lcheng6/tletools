@@ -27,3 +27,9 @@ def test_asdict(tle):
 
 def test_astuple(tle):
     assert type(tle)(*tle.astuple()) == tle
+
+def test_to_lines(tle_lines):
+    t = TLE.from_lines(*tle_lines)
+    lines = t.to_lines()
+    tle_joined_lines = '\n'.join(tle_lines)
+    assert(lines == tle_joined_lines)

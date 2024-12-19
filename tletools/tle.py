@@ -34,7 +34,6 @@ from poliastro.bodies import Earth as _Earth
 
 from .utils import partition, rev as u_rev, M_to_nu as _M_to_nu
 
-
 DEG2RAD = np.pi / 180.
 RAD2DEG = 180. / np.pi
 
@@ -67,6 +66,37 @@ def _parse_float(s):
     -0.00012345
     """
     return float(s[0] + '.' + s[1:6] + 'e' + s[6:8])
+
+
+def _float_to_string(f: float, digits: int = 8) -> str:
+    """Convert a float to a string with implicit dot and exponential notation.
+
+    >>> _float_to_string(0.00012345, digits)
+    '12345-3'
+    """
+    if f == 0:
+        # zero gets a special string
+        return "0" * digits + "-0"
+    format_string = '{:.' + str(digits) + 'E}'
+    s = format_string.format(f)
+    # skip the first zero in the exponent, and if it is +0, make it -0 to confirm to the TLE convention
+    exponent = int(s[digits + 3] + s[digits + 4] + s[digits + 5])
+    exponent = exponent + 1
+
+    # skip the decimal point, and E
+    return s[0] + s[2:digits + 1] + str(exponent)
+
+def _calculate_check_sum_on_tle_line(line: str) -> int:
+    """Calculate the checksum of a TLE line.
+
+    The checksum is calculated by taking the sum of all the digits in the line, ignoring spaces, and then taking the
+    modulo 10 of that sum.
+
+    >>> _calculate_check_sum_on_tle_line('1 25544U 98067A   19249.04864348  .00001909  00000-0  40858-4 0  9990')
+    0
+    """
+    sum_of_digits = sum(int(c) for c in line if c.isdigit()) + sum(1 for c in line if c == '-')
+    return sum_of_digits % 10
 
 
 @attr.s
@@ -145,7 +175,7 @@ class TLE:
         """Epoch of the TLE, as an :class:`astropy.time.Time` object."""
         if self._epoch is None:
             year = np.datetime64(self.epoch_year - 1970, 'Y')
-            day = np.timedelta64(int((self.epoch_day - 1) * 86400 * 10**6), 'us')
+            day = np.timedelta64(int((self.epoch_day - 1) * 86400 * 10 ** 6), 'us')
             self._epoch = Time(year + day, format='datetime64', scale='utc')
         return self._epoch
 
@@ -153,7 +183,7 @@ class TLE:
     def a(self):
         """Semi-major axis."""
         if self._a is None:
-            self._a = (_Earth.k.value / (self.n * np.pi / 43200) ** 2) ** (1/3) / 1000
+            self._a = (_Earth.k.value / (self.n * np.pi / 43200) ** 2) ** (1 / 3) / 1000
         return self._a
 
     @property
@@ -239,6 +269,29 @@ class TLE:
             d.update(epoch=self.epoch)
         return d
 
+    def to_lines(self):
+        templates = [
+            "{name}",
+            "1 {norad}{classification} {int_desig}   {epoch_year_last_digits:02d}{epoch_day:12.8f}  {dn_o2_wo_leading_zero}  {ddn_o6_wo_e}  {bstar_wo_e} 0  {set_num:3d}",
+            "2 {norad} {inc:8.4f} {raan:8.4f} {ecc_wo_leading_zero} {argp:8.4f} {M:8.4f} {n:11.8f}{rev_num:4d}",
+        ]
+        additional_dict = {
+            'epoch_year_last_digits': self.epoch_year % 100,
+            'dn_o2_wo_leading_zero': "{dn_o2:.8f}".format(dn_o2=self.dn_o2).lstrip('0'),  # dn_o2 without leading zero
+            'ddn_o6_wo_e': _float_to_string(self.ddn_o6, digits=5),
+            'line1_check_sum': 0,  # TODO: implement
+            'bstar_wo_e': _float_to_string(self.bstar, digits=5),
+            'ecc_wo_leading_zero': "{ecc:.7f}".format(ecc=self.ecc).lstrip('0').lstrip('.'),  # ecc without leading zero
+            'line2_check_sum': 5,  # TODO: implement
+        }
+        lines = [template.format(**{**self.asdict(), **additional_dict}) for template in templates]
+        line_1_mod = _calculate_check_sum_on_tle_line(lines[1])
+        line_2_mod = _calculate_check_sum_on_tle_line(lines[2])
+        lines[1] = lines[1] + str(line_1_mod)
+        lines[2] = lines[2] + str(line_2_mod)
+
+        return "\n".join(lines)
+
 
 @attr.s
 class TLEu(TLE):
@@ -256,7 +309,7 @@ class TLEu(TLE):
     def a(self):
         """Semi-major axis."""
         if self._a is None:
-            self._a = (_Earth.k.value / self.n.to_value(u.rad/u.s) ** 2) ** (1/3) * u.m
+            self._a = (_Earth.k.value / self.n.to_value(u.rad / u.s) ** 2) ** (1 / 3) * u.m
         return self._a
 
     @property
@@ -280,8 +333,8 @@ class TLEu(TLE):
             int_desig=line1[9:17],
             epoch_year=line1[18:20],
             epoch_day=float(line1[20:32]),
-            dn_o2=u.Quantity(float(line1[33:43]), u_rev / u.day**2),
-            ddn_o6=u.Quantity(_parse_float(line1[44:52]), u_rev / u.day**3),
+            dn_o2=u.Quantity(float(line1[33:43]), u_rev / u.day ** 2),
+            ddn_o6=u.Quantity(_parse_float(line1[44:52]), u_rev / u.day ** 3),
             bstar=u.Quantity(_parse_float(line1[53:61]), 1 / u.earthRad),
             set_num=line1[64:68],
             inc=u.Quantity(float(line2[8:16]), u.deg),
