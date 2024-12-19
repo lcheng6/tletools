@@ -33,3 +33,15 @@ def test_to_lines(tle_lines):
     lines = t.to_lines()
     tle_joined_lines = '\n'.join(tle_lines)
     assert(lines == tle_joined_lines)
+
+def test_orbit_to_lines(tle_lines):
+    tle = TLE.from_lines(*tle_lines)
+    orbit = tle.to_orbit()
+    # lines = orbit.to_lines()
+
+    lines_from_orbit = TLE.from_orbit(orbit).to_lines()
+    # tle_from_orbit = TLE.from_lines(*lines)
+    # didn't get right:
+    # * mean anomaly
+    # * mean motion
+    assert tle_lines == lines_from_orbit

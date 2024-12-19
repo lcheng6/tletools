@@ -256,6 +256,57 @@ class TLE:
             nu=u.Quantity(self.nu, u.deg),
             epoch=self.epoch)
 
+    @classmethod
+    def from_orbit(cls, orbit:_Orbit, name = "NOT ASSIGNED", norad = "00000", classification="U", int_desig="00000A",
+                   dn_o2=0, ddn_o6=0, bstar=0, set_num=999, rev_num=999):
+        '''Convert from a :class:`poliastro.twobody.orbit.Orbit` around the attractor.
+
+        >>> from poliastro.twobody import Orbit
+        >>> from astropy import units as u
+        >>> from poliastro.bodies import Earth
+        >>> from astropy.time import Time
+        >>> orbit_epoch_str = "2024-02-01T00:29:29.126688Z"
+        >>> orbit_epoch_time = Time.strptime(orbit_epoch_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+        >>> orbit = Orbit.from_classical(
+        ...     attractor=Earth,
+        ...     a = 6788 << u.km,
+        ...     ecc = 0.0007999 << u.one,
+        ...     inc = 51.6464 << u.deg,
+        ...     raan= 320.1755 << u.deg,
+        ...     argp= 10.9066 << u.deg,
+        ...     nu= 53.2893 << u.deg,
+        ...     epoch = orbit_epoch_time
+        ... )
+        >>> tle = TLE.from_orbit(orbit)
+        >>> tle.to_lines()
+        '1 00000U 00000A   24032.02000000  .00000000  00000-0  00000-0 0  9999\\n2 00000  51.6464 320.1755 0007999  10.9066  53.2893 15.50437522  999'
+        '''
+        return cls(
+            name=name,
+            norad=norad,
+            classification=classification,
+            int_desig=int_desig,
+            epoch_year=orbit.epoch.to_datetime().year,
+            epoch_day=orbit.epoch.to_datetime().timetuple().tm_yday + orbit.epoch.to_datetime().hour / 24 + orbit.epoch.to_datetime().minute / (
+                    24 * 60) + orbit.epoch.to_datetime().second / (
+                                     24 * 60 * 60) + orbit.epoch.to_datetime().microsecond / (24 * 60 * 60 * 1000000),
+            dn_o2=dn_o2,
+            ddn_o6=ddn_o6,
+            bstar=bstar,
+            set_num=set_num,
+            inc=orbit.inc.to(u.deg).value,
+            raan=orbit.raan.to(u.deg).value,
+            ecc=orbit.ecc.value,
+            argp=orbit.argp.to(u.deg).value,
+            # M=orbit.n * (24 * 60 * 60 * u.s) << u.deg, # mean motion
+            # n=orbit.nu.to(u.deg).value,
+            M = 110.1626, # orbit.nu.to(u.deg).value, # mean anomaly
+            n = 15.18611734, # mean motion
+            rev_num=rev_num
+        )
+
+
+
     def astuple(self):
         """Return a tuple of the attributes."""
         return attr.astuple(self)
