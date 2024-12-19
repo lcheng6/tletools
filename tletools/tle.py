@@ -280,8 +280,11 @@ class TLE:
         ... )
         >>> tle = TLE.from_orbit(orbit)
         >>> tle.to_lines()
-        '1 00000U 00000A   24032.02000000  .00000000  00000-0  00000-0 0  9999\\n2 00000  51.6464 320.1755 0007999  10.9066  53.2893 15.50437522  999'
+        TODO: fill out doc here
         '''
+        mean_motion = orbit.n * (24 * 60 * 60 * u.s)
+        mean_motion = mean_motion / ((2*np.pi)<<u.rad)
+        mean_motion = mean_motion.value
         return cls(
             name=name,
             norad=norad,
@@ -299,10 +302,8 @@ class TLE:
             raan=orbit.raan.to(u.deg).value,
             ecc=orbit.ecc.value,
             argp=orbit.argp.to(u.deg).value,
-            # M = orbit.nu.to(u.deg).value, # orbit.nu.to(u.deg).value, # mean anomaly
-            # n = orbit.n * (24 * 60 * 60 * u.s) << u.deg / (360 * u.deg), # mean motion
-            M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG,
-            n = 0,
+            M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG, # mean anomaly
+            n = mean_motion,
             rev_num=rev_num
         )
 
@@ -331,13 +332,13 @@ class TLE:
             'epoch_year_last_digits': self.epoch_year % 100,
             'dn_o2_wo_leading_zero': "{dn_o2:.8f}".format(dn_o2=self.dn_o2).lstrip('0'),  # dn_o2 without leading zero
             'ddn_o6_wo_e': _float_to_string(self.ddn_o6, digits=5),
-            'line1_check_sum': 0,  # TODO: implement
             'bstar_wo_e': _float_to_string(self.bstar, digits=5),
             'ecc_wo_leading_zero': "{ecc:.7f}".format(ecc=self.ecc).lstrip('0').lstrip('.'),  # ecc without leading zero
-            'line2_check_sum': 5,  # TODO: implement
         }
         lines = [template.format(**{**self.asdict(), **additional_dict}) for template in templates]
+        # line 1 checksum
         line_1_mod = _calculate_check_sum_on_tle_line(lines[1])
+        # line 2 checksum
         line_2_mod = _calculate_check_sum_on_tle_line(lines[2])
         lines[1] = lines[1] + str(line_1_mod)
         lines[2] = lines[2] + str(line_2_mod)
