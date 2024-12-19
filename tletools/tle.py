@@ -298,10 +298,10 @@ class TLE:
             raan=orbit.raan.to(u.deg).value,
             ecc=orbit.ecc.value,
             argp=orbit.argp.to(u.deg).value,
-            # M=orbit.n * (24 * 60 * 60 * u.s) << u.deg, # mean motion
-            # n=orbit.nu.to(u.deg).value,
-            M = orbit.nu.to(u.deg).value, # orbit.nu.to(u.deg).value, # mean anomaly
-            n = orbit.n * (24 * 60 * 60 * u.s) << u.deg / (360 * u.deg), # mean motion
+            # M = orbit.nu.to(u.deg).value, # orbit.nu.to(u.deg).value, # mean anomaly
+            # n = orbit.n * (24 * 60 * 60 * u.s) << u.deg / (360 * u.deg), # mean motion
+            M = 0,
+            n = 0,
             rev_num=rev_num
         )
 
