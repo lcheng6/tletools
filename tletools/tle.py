@@ -300,7 +300,7 @@ class TLE:
             argp=orbit.argp.to(u.deg).value,
             # M=orbit.n * (24 * 60 * 60 * u.s) << u.deg, # mean motion
             # n=orbit.nu.to(u.deg).value,
-            M = 110.1626, # orbit.nu.to(u.deg).value, # mean anomaly
+            M = orbit.nu.to(u.deg).value, # orbit.nu.to(u.deg).value, # mean anomaly
             n = orbit.n, # mean motion
             rev_num=rev_num
         )
