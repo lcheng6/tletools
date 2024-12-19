@@ -59,6 +59,11 @@ n=15.50437522, rev_num=18780)
 
 and you can then access its attributes like `t.argp`, `t.epoch`...
 
+TLE can also be written out to a string based on the orbital value:
+```python
+print(tle.to_lines())
+```
+
 ### TLE format specification
 
 Some more or less complete TLE format specifications can be found on the following websites:
