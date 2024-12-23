@@ -278,9 +278,8 @@ class TLE:
         ...     nu= 53.2893 << u.deg,
         ...     epoch = orbit_epoch_time
         ... )
-        >>> tle = TLE.from_orbit(orbit)
+        >>> tle = TLE.from_orbit(orbit, name="UNASSIGNED", norad="00000", classification="U", ...)
         >>> tle.to_lines()
-        TODO: fill out doc here
         '''
         mean_motion = orbit.n * (24 * 60 * 60 * u.s)
         mean_motion = mean_motion / ((2*np.pi)<<u.rad)
