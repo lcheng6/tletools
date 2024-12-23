@@ -1,6 +1,6 @@
 import numpy as np
 import astropy.units as u
-from poliastro.core.angles import M_to_E as _M_to_E, E_to_nu as _E_to_nu
+from poliastro.core.angles import M_to_E as _M_to_E, E_to_nu as _E_to_nu, nu_to_E as _nu_to_E, E_to_M as _E_to_M
 
 #: :class:`numpy.dtype` for a date expressed as a year.
 dt_dt64_Y = np.dtype('datetime64[Y]')
@@ -17,6 +17,18 @@ rev = u.def_unit(
 
 u.add_enabled_units(rev)
 
+def nu_to_M(nu, ecc):
+    """Mean anomaly from true anomaly.
+    :param float nu: True anomaly in radians.
+    :param float ecc: Eccentricity.
+    :returns: `M`, the mean anomaly, between -π and π radians.
+
+    **Warning**
+
+    The mean anomaly must be between -π and π radians.
+    The eccentricity must be less than 1.
+    """
+    return _E_to_M(_nu_to_E(nu, ecc), ecc)
 
 def M_to_nu(M, ecc):
     """True anomaly from mean anomaly.
