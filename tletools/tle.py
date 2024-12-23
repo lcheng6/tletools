@@ -77,15 +77,15 @@ def _float_to_string(f: float, digits: int = 8) -> str:
     """
     if f == 0:
         # zero gets a special string
-        return "0" * digits + "-0"
-    format_string = '{:.' + str(digits) + 'E}'
+        return "+" + "0" * digits + "-0"
+    format_string = '{:+.' + str(digits) + 'E}'
     s = format_string.format(f)
     # skip the first zero in the exponent, and if it is +0, make it -0 to confirm to the TLE convention
-    exponent = int(s[digits + 3] + s[digits + 4] + s[digits + 5])
+    exponent = int(s[digits + 4: digits+7])
     exponent = exponent + 1
 
     # skip the decimal point, and E
-    return s[0] + s[2:digits + 1] + str(exponent)
+    return s[0:2] + s[3:digits + 2] + str(exponent)
 
 def _calculate_check_sum_on_tle_line(line: str) -> int:
     """Calculate the checksum of a TLE line.
@@ -258,8 +258,8 @@ class TLE:
             epoch=self.epoch)
 
     @classmethod
-    def from_orbit(cls, orbit:_Orbit, name = "NOT ASSIGNED", norad = "00000", classification="U", int_desig="00000A",
-                   dn_o2=0, ddn_o6=0, bstar=0, set_num=999, rev_num=999):
+    def from_orbit(cls, orbit:_Orbit, name:str = "UNASSIGNED", norad:str = "00000", classification:str="U", int_desig:str="00000A",
+                   dn_o2:float=0.0, ddn_o6:float=0.0, bstar:float=0.0, set_num:int=999, rev_num:int=999):
         '''Convert from a :class:`poliastro.twobody.orbit.Orbit` around the attractor.
 
         >>> from poliastro.twobody import Orbit
@@ -285,6 +285,8 @@ class TLE:
         mean_motion = orbit.n * (24 * 60 * 60 * u.s)
         mean_motion = mean_motion / ((2*np.pi)<<u.rad)
         mean_motion = mean_motion.value
+        M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG, # mean anomaly
+        M = (M[0] + 360.0) % 360.0 # ensures the M's range is from 0 to 360, or [0, 360)
         return cls(
             name=name,
             norad=norad,
@@ -302,7 +304,7 @@ class TLE:
             raan=orbit.raan.to(u.deg).value,
             ecc=orbit.ecc.value,
             argp=orbit.argp.to(u.deg).value,
-            M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG, # mean anomaly
+            M = M,
             n = mean_motion,
             rev_num=rev_num
         )
@@ -325,12 +327,12 @@ class TLE:
     def to_lines(self):
         templates = [
             "{name}",
-            "1 {norad}{classification} {int_desig}   {epoch_year_last_digits:02d}{epoch_day:12.8f}  {dn_o2_wo_leading_zero}  {ddn_o6_wo_e}  {bstar_wo_e} 0  {set_num:3d}",
-            "2 {norad} {inc:8.4f} {raan:8.4f} {ecc_wo_leading_zero} {argp:8.4f} {M:8.4f} {n:11.8f}{rev_num:4d}",
+            "1 {norad}{classification} {int_desig}   {epoch_year_last_digits:02d}{epoch_day:012.8f} {dn_o2_wo_leading_zero} {ddn_o6_wo_e} {bstar_wo_e} 0  {set_num:3d}",
+            "2 {norad} {inc:8.4f} {raan:8.4f} {ecc_wo_leading_zero} {argp:8.4f} {M:8.4f} {n:11.8f}{rev_num:05d}",
         ]
         additional_dict = {
             'epoch_year_last_digits': self.epoch_year % 100,
-            'dn_o2_wo_leading_zero': "{dn_o2:.8f}".format(dn_o2=self.dn_o2).lstrip('0'),  # dn_o2 without leading zero
+            'dn_o2_wo_leading_zero': "{dn_o2:+.8f}".format(dn_o2=self.dn_o2).replace('0.', '.'),  # dn_o2 without leading zero
             'ddn_o6_wo_e': _float_to_string(self.ddn_o6, digits=5),
             'bstar_wo_e': _float_to_string(self.bstar, digits=5),
             'ecc_wo_leading_zero': "{ecc:.7f}".format(ecc=self.ecc).lstrip('0').lstrip('.'),  # ecc without leading zero
@@ -343,7 +345,7 @@ class TLE:
         lines[1] = lines[1] + str(line_1_mod)
         lines[2] = lines[2] + str(line_2_mod)
 
-        return "\n".join(lines)
+        return lines
 
 
 @attr.s
