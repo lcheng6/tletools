@@ -72,8 +72,12 @@ def _parse_float(s):
 def _float_to_string(f: float, digits: int = 8) -> str:
     """Convert a float to a string with implicit dot and exponential notation.
 
-    >>> _float_to_string(0.00012345, digits)
-    '12345-3'
+    >>> _float_to_string(0.00012345, digits=5)
+    '+12345-3'
+    >>> _float_to_string(-0.00012345, digits=5)
+    '-12345-3'
+    >>> _float_to_string(0.0, digits=5)
+    '+00000-5'
     """
     if f == 0:
         # zero gets a special string
@@ -81,11 +85,12 @@ def _float_to_string(f: float, digits: int = 8) -> str:
     format_string = '{:+.' + str(digits) + 'E}'
     s = format_string.format(f)
     # skip the first zero in the exponent, and if it is +0, make it -0 to confirm to the TLE convention
-    exponent = int(s[digits + 4: digits+7])
+    exponent = int(s[digits + 4: digits + 7])
     exponent = exponent + 1
 
     # skip the decimal point, and E
     return s[0:2] + s[3:digits + 2] + str(exponent)
+
 
 def _calculate_check_sum_on_tle_line(line: str) -> int:
     """Calculate the checksum of a TLE line.
@@ -258,15 +263,18 @@ class TLE:
             epoch=self.epoch)
 
     @classmethod
-    def from_orbit(cls, orbit:_Orbit, name:str = "UNASSIGNED", norad:str = "00000", classification:str="U", int_desig:str="00000A",
-                   dn_o2:float=0.0, ddn_o6:float=0.0, bstar:float=0.0, set_num:int=999, rev_num:int=999):
-        '''Convert from a :class:`poliastro.twobody.orbit.Orbit` around the attractor.
+    def from_orbit(cls, orbit: _Orbit, name: str = "UNASSIGNED", norad: str = "00000", classification: str = "U",
+                   int_desig: str = "00000A",
+                   dn_o2: float = 0.0, ddn_o6: float = 0.0, bstar: float = 0.0, set_num: int = 999, rev_num: int = 999):
+        '''Convert from a :class:`poliastro.twobody.orbit.Orbit` around the attractor into a TLE.
+        Additional information, such as the name, NORAD ID, classification, int_desig, dn_o2, ddn_o6, bstar, set_num, and rev_num needs
+        to be manually provided, or copied from a valid TLE.
 
         >>> from poliastro.twobody import Orbit
         >>> from astropy import units as u
         >>> from poliastro.bodies import Earth
         >>> from astropy.time import Time
-        >>> orbit_epoch_str = "2024-02-01T00:29:29.126688Z"
+        >>> orbit_epoch_str = "2024-02-01T00:00:00.000000Z"
         >>> orbit_epoch_time = Time.strptime(orbit_epoch_str, "%Y-%m-%dT%H:%M:%S.%fZ")
         >>> orbit = Orbit.from_classical(
         ...     attractor=Earth,
@@ -278,14 +286,28 @@ class TLE:
         ...     nu= 53.2893 << u.deg,
         ...     epoch = orbit_epoch_time
         ... )
-        >>> tle = TLE.from_orbit(orbit, name="UNASSIGNED", norad="00000", classification="U", ...)
-        >>> tle.to_lines()
+        >>> tle = TLE.from_orbit(
+        ...     orbit,
+        ...     name="UNASSIGNED",
+        ...     norad="00000",
+        ...     classification="U",
+        ...     int_desig="00000A",
+        ...     dn_o2=0.0,
+        ...     ddn_o6=0.0,
+        ...     bstar=0.0,
+        ...     set_num=999,
+        ...     rev_num=999
+        )
+        >>> tle_string = tle.to_lines()
+        >>> tle_string = """UNASSIGNED
+        ... 1 00000U 00000A   24032.00000000 +.00001909 +00000-0 +40858-4 0  9999
+        ... 2 00000  51.6464 320.1755 0007999  10.9066  53.2158 15.52351307009990"""
         '''
         mean_motion = orbit.n * (24 * 60 * 60 * u.s)
-        mean_motion = mean_motion / ((2*np.pi)<<u.rad)
+        mean_motion = mean_motion / ((2 * np.pi) << u.rad)
         mean_motion = mean_motion.value
-        M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG, # mean anomaly
-        M = (M[0] + 360.0) % 360.0 # ensures the M's range is from 0 to 360, or [0, 360)
+        M = _nu_to_M(orbit.nu.to(u.rad).value, orbit.ecc.value) * RAD2DEG,  # mean anomaly
+        M = (M[0] + 360.0) % 360.0  # ensures the M's range is from 0 to 360, or [0, 360)
         return cls(
             name=name,
             norad=norad,
@@ -294,7 +316,7 @@ class TLE:
             epoch_year=orbit.epoch.to_datetime().year,
             epoch_day=orbit.epoch.to_datetime().timetuple().tm_yday + orbit.epoch.to_datetime().hour / 24 + orbit.epoch.to_datetime().minute / (
                     24 * 60) + orbit.epoch.to_datetime().second / (
-                                     24 * 60 * 60) + orbit.epoch.to_datetime().microsecond / (24 * 60 * 60 * 1000000),
+                              24 * 60 * 60) + orbit.epoch.to_datetime().microsecond / (24 * 60 * 60 * 1000000),
             dn_o2=dn_o2,
             ddn_o6=ddn_o6,
             bstar=bstar,
@@ -303,12 +325,10 @@ class TLE:
             raan=orbit.raan.to(u.deg).value,
             ecc=orbit.ecc.value,
             argp=orbit.argp.to(u.deg).value,
-            M = M,
-            n = mean_motion,
+            M=M,
+            n=mean_motion,
             rev_num=rev_num
         )
-
-
 
     def astuple(self):
         """Return a tuple of the attributes."""
@@ -331,7 +351,8 @@ class TLE:
         ]
         additional_dict = {
             'epoch_year_last_digits': self.epoch_year % 100,
-            'dn_o2_wo_leading_zero': "{dn_o2:+.8f}".format(dn_o2=self.dn_o2).replace('0.', '.'),  # dn_o2 without leading zero
+            'dn_o2_wo_leading_zero': "{dn_o2:+.8f}".format(dn_o2=self.dn_o2).replace('0.', '.'),
+            # dn_o2 without leading zero
             'ddn_o6_wo_e': _float_to_string(self.ddn_o6, digits=5),
             'bstar_wo_e': _float_to_string(self.bstar, digits=5),
             'ecc_wo_leading_zero': "{ecc:.7f}".format(ecc=self.ecc).lstrip('0').lstrip('.'),  # ecc without leading zero
