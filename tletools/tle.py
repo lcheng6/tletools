@@ -297,12 +297,14 @@ class TLE:
         ...     bstar=0.0,
         ...     set_num=999,
         ...     rev_num=999
-        )
-        >>> tle_string = tle.to_lines()
+        ... )
+        >>> tle_lines = tle.to_lines()
+        >>> tle_string = "\n".join(tle_lines)
         >>> tle_string = """UNASSIGNED
         ... 1 00000U 00000A   24032.00000000 +.00001909 +00000-0 +40858-4 0  9999
         ... 2 00000  51.6464 320.1755 0007999  10.9066  53.2158 15.52351307009990"""
         '''
+
         mean_motion = orbit.n * (24 * 60 * 60 * u.s)
         mean_motion = mean_motion / ((2 * np.pi) << u.rad)
         mean_motion = mean_motion.value
